@@ -1,0 +1,29 @@
+#header {
+    height: 50px;
+    width: 100%;
+    background-color: dimgray;
+}
+#mainTable {
+    width:900px;
+    top:0px;
+    left:0px;
+    margin: auto;
+}
+
+.getButton {
+    font-size: 16pt;
+    height:50px;
+    text-align: center;
+    cursor: pointer;
+    margin:4px;
+}
+#divId{
+    display: inline-block;
+}
+#answerBox {
+    margin-left: 4px;
+    position: relative;
+    top:0;
+    height:450px;
+    overflow: scroll;
+}
