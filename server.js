@@ -147,31 +147,35 @@ function getData (id,type) {
 
 var fs = require('fs');
 
-fs.readFile('keyboard.bin', function (err, data) {
-    var offset = 0x0049;
+fs.readFile('clipboard.bin', function (err, data) {
+    parse_binary_message(data);
+});
+function parse_binary_message (data) {
+    var offset = 0x0048;
 
     var message = {};
-    message['parts'] = [];
 
     message['count'] = data.readUInt32BE(offset);
-
-    console.log(message['count']);
     offset += 4;
+
+    message['parts'] = [];
 
     var header = parse_binary_header(data);
 
     switch (header['type']) {
+        case 0x0:
+            break;
         case 0x1:
             message['parts'] = read_keyboard(data);
             break;
         case 0x2:
-
+            message['parts'] = read_clipboard(data);
             break;
         default:
             break;
     }
 
-    function read_keyboard (data) {
+    function read_keyboard () {
         var arr = [];
         for(var i = 0; i < message['count']; i++ ) {
             var partObj = {};
@@ -187,11 +191,12 @@ fs.readFile('keyboard.bin', function (err, data) {
                     offset += 1;
                     break;
                 case 0x2:
-                    var stringObj = read_string(offset);
+                    //read wndinfo
+                    var stringObj = read_string();
                     partObj['process'] = stringObj['data'];
                     offset = stringObj['offset'];
 
-                    stringObj = read_string(offset);
+                    stringObj = read_string();
                     partObj['title'] = stringObj['data'];
                     offset = stringObj['offset'];
                     break;
@@ -202,8 +207,32 @@ fs.readFile('keyboard.bin', function (err, data) {
         }
         return arr;
     }
-    function read_clipboard () {}
-    function read_string (offset) {
+    function read_clipboard () {
+        var arr = [];
+        for (i = 0; i < message['count']; i++){
+            var partObj = {}
+            partObj['time'] = data.readUInt32BE(offset);
+            offset +=4;
+
+            //read wndinfo
+            var stringObj = read_string();
+            partObj['process'] = stringObj['data'];
+            offset = stringObj['offset'];
+
+            stringObj = read_string();
+            partObj['title'] = stringObj['data'];
+            offset = stringObj['offset'];
+
+            //read data
+            stringObj = read_string();
+            partObj['data'] = stringObj['data'];
+            offset = stringObj['offset'];
+            //push one of part
+            arr.push(partObj);
+        }
+        return arr;
+    }
+    function read_string () {
         var result = {};
         var length = data.readUInt32BE(offset);
         offset += 4;
@@ -212,10 +241,12 @@ fs.readFile('keyboard.bin', function (err, data) {
         return result;
     }
     function read_wndinfo () {}
+    var lrcdata = {};
+    lrcdata['header'] = header;
+    lrcdata['data'] = message;
 
-    console.log(message);
-});
-
+    console.log(lrcdata);
+}
 
 function parse_binary_header (input) {
     var headerObj = {};
@@ -223,8 +254,7 @@ function parse_binary_header (input) {
     headerObj['version'] = input.readInt8(0x0002);
     headerObj['id'] = input.toString('ascii', 0x0003, 0x0042);
     headerObj['type'] = input.readInt8(0x0043);
-    headerObj['error'] = input.readInt8(0x0044);
-    headerObj['length'] = input.readUInt32BE(0x0045);
+    headerObj['length'] = input.readUInt32BE(0x0044);
     return headerObj;
 }
 /*
