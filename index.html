@@ -86,9 +86,23 @@
         var clientObj = {
             isAnswer:false,
         }
+        main();
+
+        function main (){
+            if (!window.WebSocket) {
+                alert ('WebSocket is  unsupported in your browser!');
+            }
+            connect_to_server();
+            $('.getButton').click(function(){
+                if(clientObj['isAnswer']) {
+                    var request = $(this).attr('title');
+                    send_request(request, 'request');
+                    check_answer_from_server();
+                }
+            });
+        }
         function check_answer_from_server() {
             setTimeout(function () {
-                alert(clientObj['isAnswer']);
                 if (!clientObj['isAnswer']) {
                     $('#answerBox').append('<div>[ERROR] server is offline now !</div>');
                     document.getElementById('answerBox').scrollTop = 9999;
@@ -113,10 +127,13 @@
             setTimeout(function() {
                 ws.send(message);
                 clientObj['isAnswer'] = false;
+                console.log('isAnswer ' + clientObj['isAnswer']);
             },250);
         }
         function connect_to_server () {
+            console.log('connect');
             ws = new WebSocket("ws://5.58.91.27:25565");
+            define_ws_handler();
             var objOutput = {
                 id:id,
                 type:'auth'
@@ -125,38 +142,61 @@
             var output = JSON.stringify(objOutput);
             setTimeout(function() {
                 clientObj['isAnswer'] = false;
+                console.log('isAnswer ' + clientObj['isAnswer']);
                 ws.send(output);}, 250);
 
             check_answer_from_server();
         }
+        //$(document).ready(function(){main ();});
+        function define_ws_handler () {
+            ws.onmessage = function (message) {
+                clientObj['isAnswer'] = true;
+                console.log('isAnswer ' + clientObj['isAnswer']);
+                $('#answerBox').append('<div>' + message['data'] + '</div>');
+                document.getElementById('answerBox').scrollTop = 9999;
+            };
+            ws.onclose = function () {
 
-      /*$(document).ready(function(){
-          main ();
-
-      });*/
-        main();
-        function main (){
-            if (!window.WebSocket) {
-                alert ('WebSocket is  unsupported in your browser!');
             }
-            connect_to_server();
-            $('.getButton').click(function(){
-                if(clientObj['isAnswer']) {
-                    var request = $(this).attr('title');
-                    send_request(request, 'request');
-                    check_answer_from_server();
-                }
-            });
         }
+       /*
+       var id = '8f51dfd14221bc7d6adaefdf0533bf9e2af2d21e1395c6085fdf76943734c271';
+       var ws;
+       client();
+       function client () {
+           function abc() {
+               ws = new WebSocket("ws://5.58.91.27:25565");
 
-        ws.onmessage = function(message) {
-            clientObj['isAnswer'] = true;
-            $('#answerBox').append('<div>' + message['data'] + '</div>' );
-            document.getElementById('answerBox').scrollTop = 9999;
-        };
-        ws.onclose = function(){
-            //connect_to_server();
-        }
+               var objOutput = {
+                   id: id,
+                   type: 'auth'
+               }
+
+               var output = JSON.stringify(objOutput);
+
+               setTimeout(function () {
+                   ws.send(output);
+               }, 250);
+
+
+           }
+           $('.getButton').click(function(){
+               abc();
+               kek();
+           });
+
+           abc();
+           kek();
+       }
+        function kek () {
+            ws.onmessage = function (message) {
+                $('#answerBox').append('<div>' + message['data'] + '</div>');
+            };
+            ws.onclose = function () {
+                // ws =  undefined;
+                alert();
+            }
+        }*/
     </script>
 </body>
 </html>

