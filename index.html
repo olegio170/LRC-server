@@ -200,29 +200,5 @@
     </script>
 </body>
 </html>
-<!--
-        var id = '8f51dfd14221bc7d6adaefdf0533bf9e2af2d21e1395c6085fdf76943734c271';
-        var ws;
-        client();
-        function client () {
-            function abc() {
-                ws = new WebSocket("ws://5.58.91.27:25565");
-                var objOutput = {
-                    id: id,
-                    type: 'auth'
-                }
 
-                var output = JSON.stringify(objOutput);
-
-                setTimeout(function () {
-                    ws.send(output);
-                }, 250);
-            }
-            abc();
-        }
-
-        ws.onmessage = function(message) {
-            $('#answerBox').append('<div>' + message['data'] + '</div>' );
-        };
--->
 
