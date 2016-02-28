@@ -45,7 +45,10 @@ function connection(ws) {
     },60000);
 
     ws.on('message', function incoming(message, flags) {
-        //if(flags['binary']){console.log(message);}
+        if(flags['binary']){
+            parse_binary_message(message);
+            return;
+        }
 
         //Try to parse JSON
         parse_JSON();
@@ -258,6 +261,8 @@ fs.readFile('clipboard.bin', function (err, data) {
     lrcdata['data'] = message;
 
     console.log(lrcdata);
+    console.log("----------------------------");
+    console.log(message);
 }
 
 function parse_binary_header (input) {
