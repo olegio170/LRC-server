@@ -11,18 +11,9 @@ var database = mysql.createConnection({
     host     : 'localhost',
     user     : 'root',
     password : '',
-    database : 'users'
+    database : 'lrc'
 });
 
-
-//Connecting to database
-/*database.connect(function(err) {
-     if (err) {
-        console.error('[ERROR]Error connecting to database: ' + err.stack);
-        return;
-     }
-     console.log('[Info]Connected to databace as id ' + database.threadId);
- });*/
 
 
 // WebSocket-сервер на порту 25565
@@ -47,7 +38,7 @@ function connection(ws) {
 
     ws.on('message', function incoming(message, flags) {
         if(flags['binary']){
-            parse_binary_message(message);
+            parse_binary_message(message,ws);
             return;
         }
 
@@ -155,25 +146,63 @@ function connection(ws) {
     );
 }
 
-function parse_binary_message (data) {
-	var lrcdata = LRCDataReader.read(data);
-	
-	if (lrcdata.ok) {
-		console.log(lrcdata.data.items);
-	} else {
-		console.log('[ERROR]Can\'t parse LRCData');
-	}
-	
+function parse_binary_message (data,ws) {
+    var lrcdata = LRCDataReader.read(data);
+    if (!lrcdata.ok) {
+        console.log('[ERROR]Can\'t parse LRCData');
+        return;
+    }
+
+    if (clients[lrcdata['id']] == null) {
+        clients[lrcdata['id']] = ws;
+        ws.send('accepted');
+        console.log('[Info]Client is authorized ' + lrcdata['id']);
+        isAuthorized = true;
+    }
+
+    console.log(lrcdata.data.items);
+    saveData();
+
+    /*var sql = "SELECT * FROM ?? WHERE ?? = ?";
+     var inserts = ['users', 'id', userId];
+     sql = mysql.format(sql, inserts);*/
+    function saveData() {
+        database.query('SELECT id FROM users WHERE shaId = "' + lrcdata.id + '" LIMIT 1', function (err, rows, fields) {
+            var id;
+            if (err != null) {
+                console.log('[ERROR]SELECT id' + err);
+                return;
+            }
+            if (rows.length == 0) {
+                database.query('INSERT INTO users (shaId) VALUES ("' + lrcdata.id + '")', function (err, result) {
+                    id = result.insertId;
+                    console.log('id = defined');
+                    insertKeyboard ();
+                });
+                console.log('[INFO]User inserted');
+            }
+            else
+            {
+                id = rows[0]['id'];
+                insertKeyboard ();
+            }
+            function insertKeyboard () {
+                console.log('ID --------------------- ' + id);
+                database.query('INSERT INTO keyboard (userId) VALUES (' + id + ')', function (err, rows, fields) {
+                    if (err != null) {
+                        console.log('INSERT keyboard ERROR' + err);
+                        return;
+                    }
+                    console.log('[INFO] data inserted');
+                });
+            }
+        });
+    }
 }
 
 /*
-database.query('SELECT * FROM keyboard', function(err, rows, fields) {
-   // if (err) throw err;
-    console.log('The solution is: ' + rows[0]['lol']);
-});*/
-//database.end();
-/*database.query('SELECT * FROM thoughts ORDER BY number', function(err, rows, fields) {
-    if (err)  {console.log(err);};
-
-    console.log('The solution is: ', rows[0].solution);
-});*/
+database.query('INSERT INTO users (shaId) VALUES ("0229c6d61077b9e9e1e8f8ad0be3f95ee66bfcafd8333b5322cc1a923b3147cf")', function (err, rows, fields) {
+    console.log(rows.insertId);
+    console.log(fields);
+});
+*/
